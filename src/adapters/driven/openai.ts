@@ -23,43 +23,49 @@ export class OpenAIAdapter implements AIResponseGenerator {
   }> {
     if (!process.env.AI_API_KEY) {
       return { 
-        category: "N/A", wikiSection: "N/A", priority: "N/A", priorityReason: "N/A",
-        diagnosis: "N/A", answer: "LỖI: Chưa cấu hình AI_API_KEY" 
+        category: "N/A", 
+        wikiSection: "N/A", 
+        priority: "N/A", 
+        priorityReason: "N/A",
+        diagnosis: "N/A",
+        answer: "LỖI: Chưa cấu hình AI_API_KEY" 
       };
     }
 
     const prompt = `
-      Nhiệm vụ: Bạn là chuyên gia hỗ trợ kỹ thuật tại MindX Tech Team. Hãy xử lý ticket dựa trên Wiki.
+      ROLE: You are a Senior Technical Support Expert at MindX Tech Team.
+      TASK: Analyze the incoming ticket and provide a diagnostic result based on the provided Wiki Knowledge Base.
 
-      [DỮ LIỆU TỪ WIKI]:
+      [WIKI KNOWLEDGE BASE]:
       ${wikiContext}
 
-      [TICKET ĐẦU VÀO]:
-      Tiêu đề: ${ticket.title}
-      Mô tả: ${ticket.description}
+      [INCOMING TICKET]:
+      Title: ${ticket.title}
+      Description: ${ticket.description}
 
-      YÊU CẦU XỬ LÝ NGHIÊM NGẶT:
-      1. ĐÁNH GIÁ PRIORITY (Bắt buộc theo số lượng user trong file SLA):
-         - Tier EXPEDITE (P1): Khi ảnh hưởng > 25 users.
-         - Tier PRIORITY (P2): Khi ảnh hưởng từ 5 đến 25 users.
-         - Tier STANDARD (P3): Khi ảnh hưởng < 5 users (Ví dụ: lỗi cho 1-2 học viên, 1 cá nhân).
-         - GIẢI THÍCH: Ghi rõ số lượng user ước tính vào "priorityReason".
+      STRICT INSTRUCTIONS:
+      1. PRIORITY ASSESSMENT:
+         - Evaluate the number of affected users from the ticket description.
+         - Map to MindX SLA Tiers: Expedite (>25 users), Priority (5-25 users), Standard (<5 users).
+         - Provide the specific reasoning in the "priorityReason" field.
 
-      2. CHẨN ĐOÁN: Dựa trên kho Resolved Tickets để chỉ ra nguyên nhân (VD: do phân bổ học phí CRM, do đồng bộ ID...).
+      2. ROOT CAUSE DIAGNOSIS:
+         - Cross-reference the ticket symptoms with "Resolved Incident Logs" in the Wiki.
+         - Identify the most likely cause (e.g., CRM payment allocation, ID sync issues, T+7 logic).
 
-      3. PHẢN HỒI (QUY TẮC PHONG CÁCH):
-         - XƯNG HÔ: Chỉ dùng "Team" hoặc "Tech Team" (Bên mình) và "BU" hoặc "Bạn" (Bên gửi).
-         - TUYỆT ĐỐI KHÔNG dùng: "mình", "nhà mình", "em/anh/chị".
-         - KHÔNG để lại bất kỳ dấu ngoặc vuông [ ] hay [Name] nào. AI phải tự đóng vai Tech Team để trả lời.
+      3. RESPONSE GENERATION:
+         - LANGUAGE: Generate the "answer" field strictly in VIETNAMESE.
+         - PERSONA: Refer to yourself as "Team" or "Tech Team". Refer to the requester as "BU" or "Bạn".
+         - NO PLACEHOLDERS: Do not leave any brackets [ ] or [Name]. Populate all details using real ticket data or professional deductions.
 
-      TRẢ VỀ JSON:
+      OUTPUT FORMAT (Strict JSON only):
       {
-        "category": "Loại vấn đề",
-        "wikiSection": "Mục Wiki",
-        "priority": "Tên Tier chuẩn (Expedite/Priority/Standard)",
-        "priorityReason": "Lý do (VD: Ảnh hưởng 1 học viên (< 5 users) nên là Standard)",
-        "diagnosis": "Nguyên nhân lỗi thực tế",
-        "answer": "Nội dung phản hồi hoàn chỉnh"
+        "category": "Classification from Wiki",
+        "wikiSection": "Relevant Wiki Section Number/Name",
+        "priority": "Expedite | Priority | Standard",
+        "priorityReason": "Explain based on user count impact",
+        "diagnosis": "Short diagnostic summary in Vietnamese",
+        "answer": "The finalized professional message in Vietnamese"
       }
     `;
 
@@ -71,13 +77,19 @@ export class OpenAIAdapter implements AIResponseGenerator {
       });
 
       const choice = completion.choices[0];
-      if (!choice || !choice.message?.content) throw new Error("AI không trả về nội dung.");
+      if (!choice || !choice.message?.content) {
+        throw new Error("AI failed to return content.");
+      }
+
       return JSON.parse(choice.message.content);
     } catch (error: any) {
       console.error("AI Error:", error.message);
       return { 
-        category: "Error", wikiSection: "2", priority: "N/A", 
-        priorityReason: "Lỗi kết nối", diagnosis: "Lỗi kết nối AI",
+        category: "Error", 
+        wikiSection: "2", 
+        priority: "N/A", 
+        priorityReason: "Connection failed",
+        diagnosis: "Lỗi kết nối AI",
         answer: "Lỗi kết nối AI: " + error.message 
       };
     }
