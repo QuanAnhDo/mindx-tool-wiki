@@ -9,7 +9,7 @@ Tài liệu này mô tả chi tiết luồng xử lý dữ liệu nghiệp vụ.
 
 ```mermaid
 graph LR
-    A[([Input: Raw Ticket])] --> B[Keyword Tokenization]
+    A("Input: Raw Ticket") --> B[Keyword Tokenization]
     B --> C{Parallel Retrieval}
     
     subgraph "Knowledge Source (Markdown Repository)"
@@ -18,7 +18,7 @@ graph LR
         C --> D3[Section 8.1: Resolved Incident Logs]
     end
     
-    D1 & D2 & D3 --> E[([Compiled Context Package])]
+    D1 & D2 & D3 --> E("Compiled Context Package")
 ```
 
 ---
@@ -28,14 +28,14 @@ graph LR
 
 ```mermaid
 graph TD
-    Start[([Compiled Context Package])] --> Logic{Logic Engine}
+    Start("Compiled Context Package") --> Logic{Logic Engine}
 
     subgraph "SLA & Tier Assignment"
         Logic --> P1[User Impact Calculation]
         P1 --> P2{Tier Mapping}
-        P2 --> P3a[Impact >25: Expedite - P1]
+        P2 --> P3a[Impact > 25: Expedite - P1]
         P2 --> P3b[Impact 5-25: Priority - P2]
-        P2 --> P3c[Impact <5: Standard - P3]
+        P2 --> P3c[Impact < 5: Standard - P3]
     end
 
     subgraph "Incident Analysis (RCA)"
@@ -45,7 +45,7 @@ graph TD
         T2 -- "Unmatched" --> T4[Label: Undocumented System Issue]
     end
 
-    P3a & P3b & P3c & T3 & T4 --> End[([Diagnostic Result & Classification])]
+    P3a & P3b & P3c & T3 & T4 --> End("Diagnostic Result & Classification")
 ```
 
 ---
@@ -55,7 +55,7 @@ graph TD
 
 ```mermaid
 graph TD
-    Input[([Diagnostic Result])] --> Draft[Standard Template Injection]
+    Input("Diagnostic Result") --> Draft[Standard Template Injection]
     
     subgraph "Persona Guardrails (Tone Enforcement)"
         Draft --> R1{Tone Validation}
