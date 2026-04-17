@@ -74,7 +74,7 @@ The system is configured via an `.env` file:
 
 ---
 
-## 7. API Usage
+## 7. Example
 **Endpoint**: `POST /ticket/analyze`
 **Request Format**:
 ```json
