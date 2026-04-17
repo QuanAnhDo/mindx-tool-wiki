@@ -1,0 +1,19 @@
+# 1. Chặn toàn bộ file và thư mục
+*
+
+# 2. Cho phép các file tài liệu Markdown
+!**/*.md
+
+# 3. Cho phép các file ảnh minh họa (nếu có)
+!**/*.jpg
+!**/*.png
+!**/*.svg
+!**/*.gif
+
+# 4. Cho phép file .gitignore này
+!.gitignore
+
+# 5. Tuyệt đối không cho phép các file nhạy cảm kể cả khi nó là .md (phòng hờ)
+.env
+node_modules/
+dist/
