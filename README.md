@@ -62,7 +62,6 @@ The system returns a structured data package (JSON) containing the Category, Pri
 The system is strictly instructed to maintain a professional corporate tone:
 - **Self-reference**: Must use "Team" or "Tech Team".
 - **External reference**: Must use "BU" or "You".
-- **Prohibited terms**: Any informal Vietnamese terms like "nhà mình", "mình", or family-based pronouns (em/anh/chị).
 
 
 ---
@@ -75,7 +74,7 @@ The system is configured via an `.env` file:
 
 ---
 
-## 7. API Usage
+## 7. Example
 **Endpoint**: `POST /ticket/analyze`
 **Request Format**:
 ```json
