@@ -9,63 +9,57 @@ export class OpenAIAdapter implements AIResponseGenerator {
     const apiKey = process.env.AI_API_KEY || "";
     const baseURL = process.env.AI_BASE_URL || "https://api.groq.com/openai/v1";
     this.model = process.env.AI_MODEL_NAME || "llama-3.3-70b-versatile";
-
     this.client = new OpenAI({ apiKey, baseURL });
   }
 
-  async generateFullResponse(ticket: { title: string; description: string }, wikiContext: string): Promise<{
+  async generateFullResponse(
+    ticket: { title: string; description: string },
+    wikiContext: string,
+    agentName: string = "Tech Team"
+  ): Promise<{
     category: string;
     wikiSection: string;
     priority: string;
     priorityReason: string;
     diagnosis: string;
-    answer: string;
+    recommendedTemplate: string;
+    acknowledgment: string;
+    analysisResponse: string;
+    fullAnswer: string;
   }> {
-    if (!process.env.AI_API_KEY) {
-      return { 
-        category: "N/A", 
-        wikiSection: "N/A", 
-        priority: "N/A", 
-        priorityReason: "N/A",
-        diagnosis: "N/A",
-        answer: "LỖI: Chưa cấu hình AI_API_KEY" 
-      };
-    }
-
     const prompt = `
-      ROLE: You are a Senior Technical Support Expert at MindX Tech Team.
-      TASK: Analyze the incoming ticket and provide a diagnostic result based on the provided Wiki Knowledge Base.
+      ROLE: Senior Technical Support Expert at MindX.
+      AGENT NAME: ${agentName}
 
-      [WIKI KNOWLEDGE BASE]:
+      TASK: Provide a professional Vietnamese response using WIKI templates and chọc (access) Odoo data.
+      IMPORTANT: Return the output as a valid JSON object.
+
+      [WIKI DATA]:
       ${wikiContext}
 
-      [INCOMING TICKET]:
+      [TICKET & ODOO DATA]:
       Title: ${ticket.title}
-      Description: ${ticket.description}
+      Details: ${ticket.description}
 
-      STRICT INSTRUCTIONS:
-      1. PRIORITY ASSESSMENT:
-         - Evaluate the number of affected users from the ticket description.
-         - Map to MindX SLA Tiers: Expedite (>25 users), Priority (5-25 users), Standard (<5 users).
-         - Provide the specific reasoning in the "priorityReason" field.
+      REPLY REQUIREMENTS (STRICT):
+      1. acknowledgment: Use Wiki 5.1 Template. Replace [Name] with "${agentName}". 
+      2. analysisResponse: 
+         - Must explain WHY the error happened based on Resolved Logs or Policies.
+         - If Odoo Data shows issues (e.g., unpaid), mention it.
+         - Professional tone. No "nhà mình", "mình", "em".
+      3. fullAnswer: Combine exactly: [acknowledgment] + [analysisResponse] + "Trân Trọng,\\nMindX Support Team".
 
-      2. ROOT CAUSE DIAGNOSIS:
-         - Cross-reference the ticket symptoms with "Resolved Incident Logs" in the Wiki.
-         - Identify the most likely cause (e.g., CRM payment allocation, ID sync issues, T+7 logic).
-
-      3. RESPONSE GENERATION:
-         - LANGUAGE: Generate the "answer" field strictly in VIETNAMESE.
-         - PERSONA: Refer to yourself as "Team" or "Tech Team". Refer to the requester as "BU" or "Bạn".
-         - NO PLACEHOLDERS: Do not leave any brackets [ ] or [Name]. Populate all details using real ticket data or professional deductions.
-
-      OUTPUT FORMAT (Strict JSON only):
+      JSON OUTPUT:
       {
-        "category": "Classification from Wiki",
-        "wikiSection": "Relevant Wiki Section Number/Name",
-        "priority": "Expedite | Priority | Standard",
-        "priorityReason": "Explain based on user count impact",
-        "diagnosis": "Short diagnostic summary in Vietnamese",
-        "answer": "The finalized professional message in Vietnamese"
+        "category": "...",
+        "wikiSection": "...",
+        "priority": "...",
+        "priorityReason": "...",
+        "diagnosis": "...",
+        "recommendedTemplate": "...",
+        "acknowledgment": "...",
+        "analysisResponse": "...",
+        "fullAnswer": "..."
       }
     `;
 
@@ -77,20 +71,14 @@ export class OpenAIAdapter implements AIResponseGenerator {
       });
 
       const choice = completion.choices[0];
-      if (!choice || !choice.message?.content) {
-        throw new Error("AI failed to return content.");
-      }
-
+      if (!choice || !choice.message?.content) throw new Error("AI returned empty content.");
       return JSON.parse(choice.message.content);
     } catch (error: any) {
-      console.error("AI Error:", error.message);
+      const fallback = "Lỗi kết nối AI.";
       return { 
-        category: "Error", 
-        wikiSection: "2", 
-        priority: "N/A", 
-        priorityReason: "Connection failed",
-        diagnosis: "Lỗi kết nối AI",
-        answer: "Lỗi kết nối AI: " + error.message 
+        category: "Error", wikiSection: "2", priority: "N/A", priorityReason: "Error",
+        diagnosis: error.message, recommendedTemplate: "no-problem.html", 
+        acknowledgment: fallback, analysisResponse: fallback, fullAnswer: fallback 
       };
     }
   }

@@ -1,0 +1,17 @@
+{
+  "allocation.html": "Use this when a user reports being unable to enroll a student or issues related to enrollment being closed, and you have verified that the remaining balance is <= 0.",
+  "no-problem.html": "General response template when checking the system and notifying the student that there are no issues.",
+  "initialization.html": "Initialization notification email template.",
+  "drop-out.html": "Used when users report being unable to create a drop-out ticket.",
+  "incorrect-product-pricing.html": "Use this when a user reports an error in their tuition fee or product pricing.",
+  "make-order-failed.html": "Response when users report being unable to create an order (make order failed), dont add product or cannot find customer information.",
+  "no-payment-date.html": "Response when users report being unable to select a payment date when adding payment (can't addpay), or issues related to payment date and order creation date or error \"Ngày chi trả phải sau ngày tạo order\", just use when ticket refer to \"THE PAYMENT DATE\" ",
+  "not-active.html": "Send notification when the system detects the course is currently not active.",
+  "not-resale-upsale.html": "Response when users report being UNABLE to create or perform resale/upsale operations.",
+  "pay-not-full.html": "Use this when a user requests to open a slot to enroll a student, but after allocating funds, the remaining balance is > 0.",
+  "refund-reward-point.html": "Notification related to refunding reward points/student points.",
+  "request-re-running.html": "Used when users request re-running - requesting to reopen a class (for finished classes).",
+  "slot-enrollment-error.html": "Use this when users report random slot jumping errors, or when enrolling students and first slots.",
+  "sync-v2-to-v1.html": "Notification that customer account data is being synced between CRM V2 and V1.",
+  "tick-uncompleted.html": "Sent to students when the student status is related to tick uncompleted."
+}

@@ -8,7 +8,8 @@ import {
 
 export type WikiHit = KnowledgeHit;
 
-const WIKI_ROOT = "C:/Quan/Mindx-techkid/mindx-cs-wiki.wiki";
+// Lấy đường dẫn Wiki từ môi trường hoặc mặc định
+const WIKI_ROOT = process.env.WIKI_PATH || "C:/Quan/Mindx-techkid/mindx-cs-wiki.wiki";
 
 function normalize(text: string): string[] {
   return text
@@ -27,13 +28,13 @@ function scoreChunk(queryTokens: string[], chunk: string): number {
   return score;
 }
 
-function chunkMarkdown(content: string, maxChars = 900): string[] {
+function chunkMarkdown(content: string, maxChars = 1200): string[] {
   const lines = content.split("\n");
   const chunks: string[] = [];
   let cur = "";
 
   for (const line of lines) {
-    // ưu tiên tách theo heading
+    // Ưu tiên tách theo heading
     if (line.trim().startsWith("#") && cur.length > 0) {
       chunks.push(cur);
       cur = "";
@@ -50,23 +51,29 @@ function chunkMarkdown(content: string, maxChars = 900): string[] {
 }
 
 export async function searchWiki(query: string, topK = 5): Promise<WikiHit[]> {
-  const files = await fg("**/*.md", { cwd: WIKI_ROOT, absolute: true });
+  // Đảm bảo đường dẫn chuẩn xác
+  const absoluteWikiRoot = path.resolve(WIKI_ROOT);
+  const files = await fg("**/*.md", { cwd: absoluteWikiRoot, absolute: true });
   const queryTokens = normalize(query);
   const hits: WikiHit[] = [];
 
   for (const file of files) {
-    const content = await fs.readFile(file, "utf8");
-    const chunks = chunkMarkdown(content);
+    try {
+      const content = await fs.readFile(file, "utf8");
+      const chunks = chunkMarkdown(content);
 
-    for (const chunk of chunks) {
-      const score = scoreChunk(queryTokens, chunk);
-      if (score > 0) {
-        hits.push({
-          filePath: path.relative(WIKI_ROOT, file).replace(/\\/g, "/"),
-          score,
-          snippet: chunk, 
-        });
+      for (const chunk of chunks) {
+        const score = scoreChunk(queryTokens, chunk);
+        if (score > 0) {
+          hits.push({
+            filePath: path.relative(absoluteWikiRoot, file).replace(/\\/g, "/"),
+            score,
+            snippet: chunk, 
+          });
+        }
       }
+    } catch (e) {
+      console.warn(`Could not read file: ${file}`);
     }
   }
 

@@ -1,59 +1,56 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
-
-export interface AIResponseGenerator {
-  generateFullResponse(ticket: { title: string; description: string }, wikiContext: string): Promise<{
-    category: string;
-    wikiSection: string;
-    priority: string;
-    answer: string;
-  }>;
-}
+import { AIResponseGenerator } from "../../application/ports/ai-generator.port";
 
 export class GeminiAIAdapter implements AIResponseGenerator {
   private getModel() {
     const key = process.env.GEMINI_API_KEY || "";
     const genAI = new GoogleGenerativeAI(key);
-    return genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+    return genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
   }
 
-  async generateFullResponse(ticket: { title: string; description: string }, wikiContext: string): Promise<{
+  async generateFullResponse(
+    ticket: { title: string; description: string },
+    wikiContext: string,
+    agentName: string = "Tech Team"
+  ): Promise<{
     category: string;
     wikiSection: string;
     priority: string;
-    answer: string;
+    priorityReason: string;
+    diagnosis: string;
+    recommendedTemplate: string;
+    acknowledgment: string;
+    analysisResponse: string;
+    fullAnswer: string;
   }> {
     const key = process.env.GEMINI_API_KEY;
     if (!key || key === "your_gemini_api_key_here") {
+      const err = "LỖI: Chưa cấu hình API Key";
       return { 
-        category: "N/A", wikiSection: "N/A", priority: "N/A", 
-        answer: "LỖI: Chưa cấu hình API Key trong file .env" 
+        category: "N/A", wikiSection: "N/A", priority: "N/A", priorityReason: "N/A",
+        diagnosis: "N/A", recommendedTemplate: "no-problem.html",
+        acknowledgment: err, analysisResponse: err, fullAnswer: err
       };
     }
 
     const model = this.getModel();
     const prompt = `
-      Bạn là chuyên gia hỗ trợ kỹ thuật MindX. Dựa vào kiến thức Wiki dưới đây, hãy xử lý ticket này.
+      Nhiệm vụ: Phân tích ticket và viết phản hồi 2 phần bằng Tiếng Việt.
+      Agent Name: ${agentName}
 
-      1. KIẾN THỨC WIKI (Quy định & Giải pháp thực tế):
-      ${wikiContext}
+      Dữ liệu Wiki: ${wikiContext}
+      Ticket: ${ticket.title} - ${ticket.description}
 
-      2. TICKET CẦN XỬ LÝ:
-      Tiêu đề: ${ticket.title}
-      Mô tả: ${ticket.description}
+      Yêu cầu:
+      1. acknowledgment: Lời chào (Mẫu Wiki 5.1), thay tên bằng ${agentName}.
+      2. analysisResponse: Chẩn đoán kỹ thuật và giải pháp.
+      3. fullAnswer: Gộp 1 + 2 + "Trân Trọng,\\nMindX Support Team".
 
-      NHIỆM VỤ:
-      - Phân loại ticket (Category, Section 1-7, Priority P1-P3).
-      - Viết một phản hồi CUỐI CÙNG chuyên nghiệp. 
-      - TRONG PHẢN HỒI: Phải giải thích rõ vấn đề dựa trên Wiki và điền đầy đủ thông tin thực tế vào các dấu [ ].
-      - Nếu Wiki có giải pháp (VD: lùi ngày order, không xóa phiếu bảo lưu), hãy đưa thẳng giải pháp đó vào câu trả lời.
-      - X xưng hô: "Mình" (Tech Team) - "Nhà mình/Bạn" (BU).
-
-      TRẢ VỀ KẾT QUẢ DẠNG JSON DUY NHẤT:
+      TRẢ VỀ JSON:
       {
-        "category": "Loại vấn đề",
-        "wikiSection": "Số mục 1-7",
-        "priority": "P1/P2/P3",
-        "answer": "Nội dung tin nhắn phản hồi sạch sẽ, không chứa [ ], không chứa mã HTML thừa"
+        "category": "...", "wikiSection": "...", "priority": "...", "priorityReason": "...",
+        "diagnosis": "...", "recommendedTemplate": "...", "acknowledgment": "...",
+        "analysisResponse": "...", "fullAnswer": "..."
       }
     `;
 
@@ -62,16 +59,11 @@ export class GeminiAIAdapter implements AIResponseGenerator {
       const text = result.response.text().replace(/```json|```/g, "").trim();
       return JSON.parse(text);
     } catch (error: any) {
-      if (error.status === 429) {
-        return { 
-          category: "Quota Exceeded", wikiSection: "N/A", priority: "N/A", 
-          answer: "LỖI: Bạn đã hết hạn mức gọi AI trong phút này. Vui lòng đợi 30 giây rồi thử lại." 
-        };
-      }
-      console.error("Gemini Error:", error);
+      const fallback = "Lỗi kết nối AI.";
       return { 
-        category: "Error", wikiSection: "2", priority: "P3", 
-        answer: "Có lỗi xảy ra khi kết nối AI. Vui lòng kiểm tra lại API Key hoặc kết nối mạng." 
+        category: "Error", wikiSection: "2", priority: "N/A", priorityReason: "Error",
+        diagnosis: "Error", recommendedTemplate: "no-problem.html", 
+        acknowledgment: fallback, analysisResponse: fallback, fullAnswer: fallback 
       };
     }
   }
