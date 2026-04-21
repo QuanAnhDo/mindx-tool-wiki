@@ -6,7 +6,6 @@ import path from "node:path";
 type AnalyzeTicketInput = {
   title: string;
   description: string;
-  agentName?: string;
 };
 
 type AnalyzeTicketOutput = {
@@ -16,6 +15,7 @@ type AnalyzeTicketOutput = {
   priority: string;
   priorityReason: string;
   diagnosis: string;
+  isSolutionFound: boolean;
   recommendedTemplate: string;
   acknowledgment: string;
   analysisResponse: string;
@@ -25,42 +25,32 @@ type AnalyzeTicketOutput = {
 
 export async function analyzeTicket(
   input: AnalyzeTicketInput,
-  knowledgeSearch: KnowledgeSearchPort,
+  azureWikiSearch: KnowledgeSearchPort,
   aiGenerator: AIResponseGenerator
 ): Promise<AnalyzeTicketOutput> {
   const query = `${input.title} ${input.description}`.trim();
   
+  // 1. Lấy mô tả Template từ file JSON local (để AI biết danh sách file)
   const templatePath = path.join(process.cwd(), "templates", ".template-description.json");
   let templateContext = "";
   try {
     const templateData = await fs.readFile(templatePath, "utf8");
-    templateContext = `[EMAIL TEMPLATES]:\n${templateData}`;
+    templateContext = `[EMAIL TEMPLATES AVAILABLE]:\n${templateData}`;
   } catch (e) {
     templateContext = "No email templates found.";
   }
 
-  // 1. Tìm kiếm đa luồng (Thêm quét chuyên sâu Mục 6)
-  const [ruleHits, generalHits, policyHits, solutionHits, templateHits] = await Promise.all([
-    knowledgeSearch.search("SLA Priority Service Tiers", 3),
-    knowledgeSearch.search(input.title, 5),
-    knowledgeSearch.search("Section 6 Policies Account Management", 5), // Quét mục 6
-    knowledgeSearch.search(`${input.title} Resolved History`, 5),
-    knowledgeSearch.search(`${input.title} Template`, 5)
-  ]);
-
-  const allHits = [...ruleHits, ...generalHits, ...policyHits, ...solutionHits, ...templateHits];
+  // 2. Chỉ truy vấn duy nhất từ Azure Wiki (Theo yêu cầu tối giản)
+  const hits = await azureWikiSearch.search(input.title, 15);
   
-  // Lọc trùng theo đường dẫn file
-  const uniqueHits = Array.from(new Map(allHits.map(h => [h.filePath, h])).values());
-
   const wikiContextFullText = `
     ${templateContext}
     ---
-    ${uniqueHits.map(h => `[FILE: ${h.filePath}]\n${h.snippet}`).join("\n\n---\n\n")}
+    ${hits.map(h => `[SOURCE: ${h.filePath}]\n${h.snippet}`).join("\n\n---\n\n")}
   `;
 
-  // 2. AI phân tích
-  const aiResult = await aiGenerator.generateFullResponse(input, wikiContextFullText, input.agentName);
+  // 3. AI đọc và đưa ra phản hồi
+  const aiResult = await aiGenerator.generateFullResponse(input, wikiContextFullText);
 
   return {
     query,
@@ -69,10 +59,11 @@ export async function analyzeTicket(
     priority: aiResult.priority,
     priorityReason: aiResult.priorityReason,
     diagnosis: aiResult.diagnosis,
+    isSolutionFound: aiResult.isSolutionFound,
     recommendedTemplate: aiResult.recommendedTemplate || "no-problem.html",
     acknowledgment: aiResult.acknowledgment,
     analysisResponse: aiResult.analysisResponse,
     response: aiResult.fullAnswer,
-    usedContext: uniqueHits.map(h => h.filePath).slice(0, 10),
+    usedContext: hits.map(h => h.filePath).slice(0, 10),
   };
 }

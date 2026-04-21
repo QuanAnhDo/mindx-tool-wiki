@@ -13,17 +13,23 @@ const aiAdapter = new OpenAIAdapter();
 app.use(express.json());
 
 app.get("/health", (_req: Request, res: Response) => {
-  res.json({ ok: true, service: "mindx-ticket-ai" });
+  res.json({ ok: true, status: "Query & Mutation Mode" });
 });
 
 app.post("/ticket/analyze", async (req: Request, res: Response) => {
-  const { title = "", description = "" } = req.body ?? {};
-  if (!title && !description) {
-    return res.status(400).json({ error: "title or description is required" });
+  const { title, description } = req.body ?? {};
+  
+  if (!title || !description) {
+    return res.status(400).json({ error: "title and description are required" });
   }
 
   try {
+    console.log(`🔍 Query: ${title}`);
     const result = await analyzeTicket({ title, description }, wikiSearchAdapter, aiAdapter);
+    
+    const status = result.isSolutionFound ? "✅ RESOLVED" : "⏳ PENDING (Mutation Needed)";
+    console.log(`[${status}] Category: ${result.category}`);
+    
     return res.json(result);
   } catch (error: any) {
     return res.status(500).json({ error: "Analysis failed", details: error.message });
@@ -32,5 +38,6 @@ app.post("/ticket/analyze", async (req: Request, res: Response) => {
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
-  console.log(`Server running at http://localhost:${PORT}`);
+  console.log(`🚀 AI ENGINE RUNNING at http://localhost:${PORT}`);
+  console.log(`👉 Workflow: Query Wiki -> If not found -> Mutate Wiki -> Repeat.`);
 });
