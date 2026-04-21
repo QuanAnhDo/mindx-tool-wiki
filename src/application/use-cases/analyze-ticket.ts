@@ -30,7 +30,7 @@ export async function analyzeTicket(
 ): Promise<AnalyzeTicketOutput> {
   const query = `${input.title} ${input.description}`.trim();
   
-  // 1. Lấy mô tả Template từ file JSON local (để AI biết danh sách file)
+  // 1. Lấy mô tả Template từ file JSON local
   const templatePath = path.join(process.cwd(), "templates", ".template-description.json");
   let templateContext = "";
   try {
@@ -40,13 +40,16 @@ export async function analyzeTicket(
     templateContext = "No email templates found.";
   }
 
-  // 2. Chỉ truy vấn duy nhất từ Azure Wiki (Theo yêu cầu tối giản)
+  // 2. Tìm kiếm Wiki (Adapter mới sẽ tự động nạp SLA và ACK)
   const hits = await azureWikiSearch.search(input.title, 15);
   
+  // Lọc trùng theo đường dẫn file
+  const uniqueHits = Array.from(new Map(hits.map(h => [h.filePath, h])).values());
+
   const wikiContextFullText = `
     ${templateContext}
     ---
-    ${hits.map(h => `[SOURCE: ${h.filePath}]\n${h.snippet}`).join("\n\n---\n\n")}
+    ${uniqueHits.map(h => `[SOURCE: ${h.filePath}]\n${h.snippet}`).join("\n\n---\n\n")}
   `;
 
   // 3. AI đọc và đưa ra phản hồi
@@ -64,6 +67,6 @@ export async function analyzeTicket(
     acknowledgment: aiResult.acknowledgment,
     analysisResponse: aiResult.analysisResponse,
     response: aiResult.fullAnswer,
-    usedContext: hits.map(h => h.filePath).slice(0, 10),
+    usedContext: uniqueHits.map(h => h.filePath).slice(0, 10),
   };
 }

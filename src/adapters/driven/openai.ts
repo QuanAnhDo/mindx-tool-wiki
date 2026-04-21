@@ -12,7 +12,11 @@ export class OpenAIAdapter implements AIResponseGenerator {
     this.client = new OpenAI({ apiKey, baseURL });
   }
 
-  async generateFullResponse(ticket: { title: string; description: string }, wikiContext: string): Promise<{
+  async generateFullResponse(
+    ticket: { title: string; description: string },
+    wikiContext: string,
+    agentName: string = "Tech Team"
+  ): Promise<{
     category: string;
     wikiSection: string;
     priority: string;
@@ -25,7 +29,7 @@ export class OpenAIAdapter implements AIResponseGenerator {
     fullAnswer: string;
   }> {
     if (!process.env.AI_API_KEY) {
-      const err = "ERROR: Missing AI_API_KEY";
+      const err = "ERROR: Missing API_KEY";
       return { 
         category: "N/A", wikiSection: "N/A", priority: "N/A", priorityReason: "N/A",
         diagnosis: "N/A", isSolutionFound: false, recommendedTemplate: "no-problem.html",
@@ -34,39 +38,43 @@ export class OpenAIAdapter implements AIResponseGenerator {
     }
 
     const prompt = `
-      ROLE: Senior Technical Support at MindX.
-      TASK: Extract and populate Wiki templates while strictly enforcing professional persona.
+      ROLE: Senior Technical Support Expert at MindX.
+      TASK: Match the ticket with existing Wiki solutions (QUERY). 
 
-      [WIKI CONTEXT]:
+      [WIKI DATA]:
       ${wikiContext}
 
       [TICKET]:
       Title: ${ticket.title}
       Description: ${ticket.description}
 
-      STRICT PERSONA & LANGUAGE RULES:
-      - FORBIDDEN WORDS: Never use "nhà mình", "mình", "em", "anh", "chị", "quando".
-      - MANDATORY TERMS: Use "Tech Team" or "Team" for yourself. Use "BU" or "Bạn" for the requester.
-      - If the Wiki template contains a forbidden word, you MUST replace it with a professional alternative.
-      - LANGUAGE: Strictly VIETNAMESE.
+      STRICT DECISION RULES:
+      1. isSolutionFound: 
+         - Set to TRUE ONLY if you find a specific resolution for THIS EXACT PROBLEM in "Section 8 (Resolved Tickets)" or "Section 7 (Known Issues)". 
+         - Set to FALSE if the ticket describes a new issue or if the Wiki only contains general policies without a fix.
+      
+      2. RESPONSE STRUCTURE (VIETNAMESE):
+         - IF RESOLVED (true): acknowledgment (Wiki 5.1) + The Solution (Wiki 5.3) + Signature.
+         - IF PENDING (false): acknowledgment (Wiki 5.1) + "Vấn đề này hiện chưa có trong quy trình xử lý tự động. Tech Team đang tiến hành rà soát kỹ thuật và sẽ phản hồi giải pháp cho bạn sớm nhất (trong vòng 24h)." + Signature.
 
-      OUTPUT INSTRUCTIONS:
-      1. acknowledgment: Fill the template from Wiki 5.1. Replace [Name] with "Tech Team". Replace any informal terms found in the template.
-      2. analysisResponse: Provide technical diagnosis.
-      3. fullAnswer: Combined message.
+      STRICT STYLE RULES:
+      - Always start with "Dear BU,".
+      - Use "Tech Team" for yourself.
+      - NO informal terms like "nhà mình", "mình", "em".
+      - NO [ ] placeholders.
 
-      RETURN JSON:
+      OUTPUT FORMAT (JSON ONLY):
       {
         "category": "...",
         "wikiSection": "...",
-        "priority": "...",
-        "priorityReason": "...",
-        "diagnosis": "...",
-        "isSolutionFound": true/false,
+        "priority": "Standard | Priority | Expedite",
+        "priorityReason": "Explain based on user impact (<5, 5-25, >25)",
+        "diagnosis": "Technical analysis of the issue",
+        "isSolutionFound": true | false,
         "recommendedTemplate": "...",
-        "acknowledgment": "...",
-        "analysisResponse": "...",
-        "fullAnswer": "..."
+        "acknowledgment": "Standard greeting from Wiki 5.1",
+        "analysisResponse": "The solution part OR the pending notification",
+        "fullAnswer": "Full professional message"
       }
     `;
 
@@ -76,8 +84,9 @@ export class OpenAIAdapter implements AIResponseGenerator {
         model: this.model,
         response_format: { type: "json_object" },
       });
+
       const choice = completion.choices[0];
-      if (!choice || !choice.message?.content) throw new Error("Empty response");
+      if (!choice || !choice.message?.content) throw new Error("AI failed");
       return JSON.parse(choice.message.content);
     } catch (error: any) {
       const fallback = "Lỗi kết nối AI.";

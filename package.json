@@ -5,6 +5,7 @@
   "main": "index.js",
   "scripts": {
     "dev": "ts-node-dev --respawn --transpile-only src/main/infra/server.ts",
+    "wiki": "ts-node src/main/cli/wiki-query.ts",
     "build": "tsc",
     "start": "node dist/main/infra/server.js"
   },
@@ -12,19 +13,28 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "@apollo/server": "^5.5.0",
+    "@as-integrations/express4": "^1.1.2",
     "@azure/msal-node": "^5.1.3",
     "@google/generative-ai": "^0.24.1",
     "@microsoft/microsoft-graph-client": "^3.0.7",
     "axios": "^1.8.1",
+    "body-parser": "^2.2.2",
     "cheerio": "^1.0.0",
+    "commander": "^14.0.3",
+    "cors": "^2.8.6",
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
     "fast-glob": "^3.3.3",
+    "graphql": "^16.13.2",
+    "graphql-yoga": "^5.21.0",
     "isomorphic-fetch": "^3.0.0",
     "openai": "^6.34.0",
     "xmlrpc": "^1.3.2"
   },
   "devDependencies": {
+    "@types/body-parser": "^1.19.6",
+    "@types/cors": "^2.8.19",
     "@types/express": "^5.0.6",
     "@types/node": "^25.6.0",
     "@types/xmlrpc": "^1.3.9",
